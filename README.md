@@ -1,2 +1,3 @@
-# fly-io-echo-challenge
-The echo challenge by Fly.io written in Rust
+# fly-io-challenge
+
+Challenges by Fly.io written in Rust
