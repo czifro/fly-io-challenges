@@ -95,7 +95,7 @@ pub struct Body<P> {
   pub in_reply_to: Option<usize>,
 
   #[serde(flatten)]
-  payload: P,
+  pub payload: P,
 }
 
 impl<P> Body<P> {
