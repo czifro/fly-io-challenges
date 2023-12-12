@@ -1,11 +1,9 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use maelstrom_protocol::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-struct EchoNode {
-  id: usize,
-}
+struct EchoNode;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -13,40 +11,17 @@ struct EchoNode {
 enum Payload {
   Echo { echo: String },
   EchoOk { echo: String },
-  Init { node_id: String, node_ids: Vec<String> },
-  InitOk,
 }
 
 impl StateMachine<Payload> for EchoNode {
   fn step(&mut self, message: Message<Payload>, output: &mut MessageSender) -> Result<()> {
-    match message.body.payload {
-      Payload::Init { .. } => {
-        let reply = Message {
-          src: message.dst,
-          dst: message.src,
-          body: Body {
-            id: Some(self.id),
-            in_reply_to: message.body.id,
-            payload: Payload::InitOk,
-          },
-        };
-        self.id += 1;
-        output.send(reply)?;
-      }
+    match &message.body.payload {
       Payload::Echo { echo } => {
-        let reply = Message {
-          src: message.dst,
-          dst: message.src,
-          body: Body {
-            id: Some(self.id),
-            in_reply_to: message.body.id,
-            payload: Payload::EchoOk { echo },
-          },
-        };
-        self.id += 1;
+        let reply = message.into_reply(Payload::EchoOk {
+          echo: echo.to_owned(),
+        });
         output.send(reply)?;
       }
-      Payload::InitOk { .. } => bail!("received init_ok message"),
       Payload::EchoOk { .. } => {}
     }
     Ok(())
@@ -54,7 +29,7 @@ impl StateMachine<Payload> for EchoNode {
 }
 
 fn main() -> Result<()> {
-  let mut node = Node::new(EchoNode::default());
+  let mut node = Node::<EchoNode, Payload>::new();
 
   node.run()?;
 
