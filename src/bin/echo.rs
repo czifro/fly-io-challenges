@@ -14,6 +14,10 @@ enum Payload {
 }
 
 impl StateMachine<Payload> for EchoNode {
+  fn new(_: Init) -> Self {
+    Self
+  }
+
   fn step(&mut self, message: Message<Payload>, output: &mut MessageSender) -> Result<()> {
     match &message.body.payload {
       Payload::Echo { echo } => {

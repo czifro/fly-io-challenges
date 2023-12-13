@@ -19,13 +19,12 @@ where
   pub connected_nodes: Vec<String>,
   pub in_channel: NodeInboundChannel,
   pub out_channel: NodeOutboundChannel,
-  pub state: S,
-  _data: PhantomData<P>,
+  _data: PhantomData<(P,S)>,
 }
 
 impl<S, P> Node<S, P>
 where
-  S: StateMachine<P> + Default,
+  S: StateMachine<P>,
 {
   pub fn new() -> Self {
     Self {
@@ -33,8 +32,7 @@ where
       connected_nodes: Vec::default(),
       in_channel: stdin(),
       out_channel: stdout(),
-      state: S::default(),
-      _data: PhantomData::<P>::default(),
+      _data: PhantomData::<(P,S)>::default(),
     }
   }
 }
@@ -52,15 +50,20 @@ where
       bail!("Did not receive init message");
     };
     let init_msg: Message<InitPayload> = init_msg.context("Failed to deserialize init message")?;
-    self
-      .state
+    let InitPayload::Init(init) = init_msg.body.payload.clone() else {
+      bail!("Received init_ok message");
+    };
+
+    let mut state = <S as StateMachine<P>>::new(init);
+
+    state
       .step(init_msg, &mut sender)
       .context("Step function failed to process message")?;
 
     let inputs = recver.into_iter::<P>();
     for input in inputs {
       let input = input.context("Maelstrom input from STDIN could not be deserialized")?;
-      self.state.step(input, &mut sender)?;
+      state.step(input, &mut sender)?;
     }
 
     Ok(())
@@ -155,10 +158,14 @@ where
 }
 
 pub trait StateMachine<P> {
+  fn new(init: Init) -> Self;
   fn step(&mut self, message: Message<P>, output: &mut MessageSender) -> Result<()>;
 }
 
 impl<N> StateMachine<InitPayload> for N {
+  fn new(_: Init) -> Self {
+    unreachable!("State machine for init payload is not instantiable")
+  }
   fn step(&mut self, message: Message<InitPayload>, output: &mut MessageSender) -> Result<()> {
     match &message.body.payload {
       InitPayload::Init(Init { .. }) => {
