@@ -9,14 +9,11 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub type NodeOutboundChannel = Stdout;
 pub type NodeInboundChannel = Stdin;
 pub type NodeLogChannel = Stderr;
-pub type MessageWriter<'a> = serde_json::Serializer<StdoutLock<'a>>;
 
 pub struct Node<S, P>
 where
   S: StateMachine<P>,
 {
-  pub id: String,
-  pub connected_nodes: Vec<String>,
   pub in_channel: NodeInboundChannel,
   pub out_channel: NodeOutboundChannel,
   _data: PhantomData<(P,S)>,
@@ -28,8 +25,6 @@ where
 {
   pub fn new() -> Self {
     Self {
-      id: String::new(),
-      connected_nodes: Vec::default(),
       in_channel: stdin(),
       out_channel: stdout(),
       _data: PhantomData::<(P,S)>::default(),
